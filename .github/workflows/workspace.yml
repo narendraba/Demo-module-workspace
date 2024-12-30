@@ -1,0 +1,52 @@
+name: Terraform workspace infra
+
+on:
+  push:
+    branches:
+      - Master
+      - development
+      - staging
+
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ap-south-1
+
+      - name: Set Terraform Workspace
+        id: workspace
+        run: |
+          if [[ "${GITHUB_REF##*/}" == "Master" ]]; then
+            echo "::set-output name=workspace::production"
+          elif [[ "${GITHUB_REF##*/}" == "development" ]]; then
+            echo "::set-output name=workspace::development"
+          elif [[ "${GITHUB_REF##*/}" == "staging" ]]; then
+            echo "::set-output name=workspace::staging"
+          else
+            echo "::set-output name=workspace::default"
+          fi
+
+      - name: Terraform Init
+        working-directory: ./workspace
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: ./workspace
+        run: |
+          terraform workspace new ${{ steps.workspace.outputs.workspace }} || terraform workspace select ${{ steps.workspace.outputs.workspace }}
+          terraform apply -auto-approve
