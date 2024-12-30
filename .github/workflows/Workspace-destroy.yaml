@@ -1,11 +1,12 @@
 name: Terraform workspace infra destroy
 
 on:
-  push:
-    branches:
-      - Master
-      - development
-      - staging
+  workflow_dispatch
+  #push:
+  #  branches:
+  #    - Master
+  #    - development
+  #    - staging
 
 
 jobs:
