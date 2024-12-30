@@ -48,7 +48,9 @@ jobs:
 
       - name: Terraform plan
        # working-directory: 
-        run: terraform plan
+        run: |
+          terraform workspace new ${{ steps.workspace.outputs.workspace }} || terraform workspace select ${{ steps.workspace.outputs.workspace }}
+          terraform plan
 
       - name: Terraform Apply
       #  working-directory: 
