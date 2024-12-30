@@ -5,6 +5,7 @@ on:
     branches:
       - Master
       - development
+      - dev
       - staging
 
 
@@ -42,11 +43,11 @@ jobs:
           fi
 
       - name: Terraform Init
-        working-directory: ./workspace
+       # working-directory: 
         run: terraform init
 
       - name: Terraform Apply
-        working-directory: ./workspace
+      #  working-directory: 
         run: |
           terraform workspace new ${{ steps.workspace.outputs.workspace }} || terraform workspace select ${{ steps.workspace.outputs.workspace }}
           terraform apply -auto-approve
