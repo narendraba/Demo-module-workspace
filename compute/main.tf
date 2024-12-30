@@ -13,8 +13,8 @@ provider "aws" {
 }
 
 resource "aws_instance" "compute" {
-  ami           = "ami-053b12d3152c0cc71"
-  instance_type = "t2.micro"
+  ami           = var.ami
+  instance_type = var.instance_type
   tags = {
     Name = "compute-instance"
   }
