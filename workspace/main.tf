@@ -14,17 +14,17 @@ provider "aws" {
 }
 
 # VPC
-resource "aws_vpc" "main" {
+resource "aws_vpc" "Dev" {
   cidr_block = "10.0.0.0/16"
 
   tags = {
-    Name = "main-vpc"
+    Name = "Dev-vpc"
   }
 }
 
 # Public Subnet
 resource "aws_subnet" "public" {
-  vpc_id            = aws_vpc.main.id
+  vpc_id            = aws_vpc.Dev.id
   cidr_block        = "10.0.1.0/24"
   availability_zone = "ap-south-1a"
 
@@ -35,7 +35,7 @@ resource "aws_subnet" "public" {
 
 # Private Subnet
 resource "aws_subnet" "private" {
-  vpc_id            = aws_vpc.main.id
+  vpc_id            = aws_vpc.Dev.id
   cidr_block        = "10.0.2.0/24"
   availability_zone = "ap-south-1a"
 
@@ -46,16 +46,16 @@ resource "aws_subnet" "private" {
 
 # Internet Gateway
 resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
+  vpc_id = aws_vpc.Dev.id
 
   tags = {
-    Name = "main-igw"
+    Name = "Dev-igw"
   }
 }
 
 # Public Route Table
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
+  vpc_id = aws_vpc.Dev.id
 
   route {
     cidr_block = "0.0.0.0/0"
@@ -75,7 +75,7 @@ resource "aws_route_table_association" "public" {
 
 # Security Group
 resource "aws_security_group" "allow_ssh" {
-  vpc_id = aws_vpc.main.id
+  vpc_id = aws_vpc.Dev.id
 
   ingress {
     from_port   = 22
