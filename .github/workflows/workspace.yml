@@ -65,4 +65,4 @@ jobs:
       #  working-directory: 
         run: |
           terraform workspace new ${{ steps.workspace.outputs.workspace }} || terraform workspace select ${{ steps.workspace.outputs.workspace }}
-          terraform apply -var-file=${{ github.ref_name }}.tfvars -out=tfplan -auto-approve
+          terraform apply -auto-approve
