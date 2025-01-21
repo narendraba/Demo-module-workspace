@@ -59,7 +59,7 @@ jobs:
        # working-directory: 
         run: |
           terraform workspace new ${{ steps.workspace.outputs.workspace }} || terraform workspace select ${{ steps.workspace.outputs.workspace }}
-          terraform plan
+          terraform plan -var-file=${{ github.ref_name }}.tfvars -out=tfplan
 
       - name: Terraform Apply
       #  working-directory: 
