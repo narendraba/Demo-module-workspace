@@ -1,0 +1,92 @@
+name: Terraform workspace backup and destroy
+
+on:
+  workflow_dispatch
+  #push:
+  #  branches:
+  #    - Master
+  #    - development
+  #    - staging
+
+
+jobs:
+  terraform-backup-destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ap-south-1
+
+      - name: Set Terraform Workspace
+        id: workspace
+        run: |
+          if [[ "${GITHUB_REF##*/}" == "Master" ]]; then
+            echo "::set-output name=workspace::production"
+          elif [[ "${GITHUB_REF##*/}" == "development" ]]; then
+            echo "::set-output name=workspace::development"
+          elif [[ "${GITHUB_REF##*/}" == "staging" ]]; then
+            echo "::set-output name=workspace::staging"
+          else
+            echo "::set-output name=workspace::default"
+          fi
+      - name: Fetch EC2 Instance ID
+        id: fetch-instance
+        run: |
+          TAG_KEY="Name"
+          TAG_VALUE="compute-instance" # Replace with your instance tag value
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:${TAG_KEY},Values=${TAG_VALUE}" \
+                      "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].InstanceId" --output text)
+          if [ -z "$INSTANCE_ID" ]; then
+            echo "Error: No running EC2 instance found with the specified tag."
+            exit 1
+          fi
+          echo "INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
+          echo "Fetched EC2 Instance ID: $INSTANCE_ID"
+
+      - name: Backup EC2 Instance
+        id: backup
+        run: |
+          AMI_NAME="Backup-AMI-$(date +%Y-%m-%d-%H-%M-%S)"
+          echo "Creating AMI for Instance ID: ${{ env.INSTANCE_ID }}"
+          AMI_ID=$(aws ec2 create-image \
+            --instance-id ${{ env.INSTANCE_ID }} \
+            --name "$AMI_NAME" --no-reboot \
+            --query "ImageId" --output text)
+          echo "AMI Created: $AMI_ID"
+          aws ec2 create-tags --resources $AMI_ID --tags Key=Backup,Value=TerraformDestroy
+          echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+
+      - name: Wait for AMI Availability
+        run: |
+          echo "Waiting for AMI (${{ env.AMI_ID }}) to become available..."
+          aws ec2 wait image-available --image-ids ${{ env.AMI_ID }}
+          echo "AMI is now available."
+
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: |
+          terraform workspace new ${{ steps.workspace.outputs.workspace }} || terraform workspace select ${{ steps.workspace.outputs.workspace }}
+          terraform apply -auto-approve
+          
+          
+      - name: Terraform Destroy
+        run: |
+          terraform workspace select ${{ steps.workspace.outputs.workspace }} || terraform workspace select ${{ steps.workspace.outputs.workspace }}
+          terraform destroy -auto-approve
